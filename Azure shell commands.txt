@@ -1,0 +1,276 @@
+-- Notes
+-- creating in northeurope as there is more container support there
+-- storage accounts need to be lowercase
+
+
+-- creating the resource group
+az group create --name wbqResGrpOne --location northeurope
+
+-- creating a storage account
+az storage account create --name wbqstorage1 \
+--location northeurope --resource-group wbqResGrpOne \
+--sku Standard_LRS --kind blobstorage --access-tier hot  
+
+	{
+	  "accessTier": "Hot",
+	  "creationTime": "2017-11-30T14:08:47.235222+00:00",
+	  "customDomain": null,
+	  "enableHttpsTrafficOnly": false,
+	  "encryption": {
+		"keySource": "Microsoft.Storage",
+		"keyVaultProperties": null,
+		"services": {
+		  "blob": {
+			"enabled": true,
+			"lastEnabledTime": "2017-11-30T14:08:47.237222+00:00"
+		  },
+		  "file": {
+			"enabled": true,
+			"lastEnabledTime": "2017-11-30T14:08:47.237222+00:00"
+		  },
+		  "queue": null,
+		  "table": null
+		}
+	  },
+	  "id": "/subscriptions/1e54fbcb-5257-4b12-9433-54b6cf44ee5e/resourceGroups/wbqresgrpone/providers/Microsoft.Storage/storageAccounts/wbqstorage1",
+	  "identity": null,
+	  "kind": "BlobStorage",
+	  "lastGeoFailoverTime": null,
+	  "location": "northeurope",
+	  "name": "wbqstorage1",
+	  "networkRuleSet": {
+		"bypass": "AzureServices",
+		"defaultAction": "Allow",
+		"ipRules": [],
+		"virtualNetworkRules": []
+	  },
+	  "primaryEndpoints": {
+		"blob": "https://wbqstorage1.blob.core.windows.net/",
+		"file": null,
+		"queue": null,
+		"table": "https://wbqstorage1.table.core.windows.net/"
+	  },
+	  "primaryLocation": "northeurope",
+	  "provisioningState": "Succeeded",
+	  "resourceGroup": "wbqresgrpone",
+	  "secondaryEndpoints": null,
+	  "secondaryLocation": null,
+	  "sku": {
+		"capabilities": null,
+		"kind": null,
+		"locations": null,
+		"name": "Standard_LRS",
+		"resourceType": null,
+		"restrictions": null,
+		"tier": "Standard"
+	  },
+	  "statusOfPrimary": "available",
+	  "statusOfSecondary": null,
+	  "tags": {},
+	  "type": "Microsoft.Storage/storageAccounts"
+	}
+	
+
+-- get the storage keys for the account, and create 2 containers	
+blobStorageAccount=wbqstorage1
+
+blobStorageAccountKey=$(az storage account keys list -g wbqResGrpOne \
+-n $blobStorageAccount --query [0].value --output tsv) 
+
+az storage container create -n images --account-name $blobStorageAccount \
+--account-key $blobStorageAccountKey --public-access off 
+
+az storage container create -n thumbs --account-name $blobStorageAccount \
+--account-key $blobStorageAccountKey --public-access container
+
+echo "Make a note of your blob storage account key..." 
+echo $blobStorageAccountKey 
+
+	brian@Azure:~$ blobStorageAccount=wbqstorage1
+	brian@Azure:~$
+	brian@Azure:~$ blobStorageAccountKey=$(az storage account keys list -g wbqResGrpOne \
+	> -n $blobStorageAccount --query [0].value --output tsv)
+	brian@Azure:~$
+	brian@Azure:~$ az storage container create -n images --account-name $blobStorageAccount \
+	> --account-key $blobStorageAccountKey --public-access off
+	{
+	  "created": true
+	}
+	brian@Azure:~$
+	brian@Azure:~$ az storage container create -n thumbs --account-name $blobStorageAccount \
+	> --account-key $blobStorageAccountKey --public-access container
+	{
+	  "created": true
+	}
+	brian@Azure:~$
+	brian@Azure:~$ echo "Make a note of your blob storage account key..."
+	Make a note of your blob storage account key...
+	brian@Azure:~$ echo $blobStorageAccountKey
+	***************************************************************************==
+
+-- create App service plan
+az appservice plan create --name wbqAppServicePlanOneFree --resource-group wbqResGrpOne --sku FREE
+
+	{
+	  "adminSiteName": null,
+	  "appServicePlanName": "wbqAppServicePlanOneFree",
+	  "geoRegion": "North Europe",
+	  "hostingEnvironmentProfile": null,
+	  "id": "/subscriptions/1e54fbcb-5257-4b12-9433-54b6cf44ee5e/resourceGroups/wbqResGrpOne/providers/Microsoft.Web/serverfarms/wbqAppServicePlanOneFre
+	e",
+	  "isSpot": false,
+	  "kind": "app",
+	  "location": "North Europe",
+	  "maximumNumberOfWorkers": 1,
+	  "name": "wbqAppServicePlanOneFree",
+	  "numberOfSites": 0,
+	  "perSiteScaling": false,
+	  "provisioningState": "Succeeded",
+	  "reserved": false,
+	  "resourceGroup": "wbqResGrpOne",
+	  "sku": {
+		"capabilities": null,
+		"capacity": 0,
+		"family": "F",
+		"locations": null,
+		"name": "F1",
+		"size": "F1",
+		"skuCapacity": null,
+		"tier": "Free"
+	  },
+	  "spotExpirationTime": null,
+	  "status": "Ready",
+	  "subscription": "1e54fbcb-5257-4b12-9433-54b6cf44ee5e",
+	  "tags": null,
+	  "targetWorkerCount": 0,
+	  "targetWorkerSizeId": 0,
+	  "type": "Microsoft.Web/serverfarms",
+	  "workerTierName": null
+	}
+	
+	
+-- create a web app
+az webapp create --name wbq-image-thumb --resource-group wbqResGrpOne --plan wbqAppServicePlanOneFree
+
+	{
+	  "availabilityState": "Normal",
+	  "clientAffinityEnabled": true,
+	  "clientCertEnabled": false,
+	  "cloningInfo": null,
+	  "containerSize": 0,
+	  "dailyMemoryTimeQuota": 0,
+	  "defaultHostName": "wbq-image-thumb.azurewebsites.net",
+	  "enabled": true,
+	  "enabledHostNames": [
+		"wbq-image-thumb.azurewebsites.net",
+		"wbq-image-thumb.scm.azurewebsites.net"
+	  ],
+	  "ftpPublishingUrl": "ftp://waws-prod-db3-093.ftp.azurewebsites.windows.net/site/wwwroot",
+	  "hostNameSslStates": [
+		{
+		  "hostType": "Standard",
+		  "name": "wbq-image-thumb.azurewebsites.net",
+		  "sslState": "Disabled",
+		  "thumbprint": null,
+		  "toUpdate": null,
+		  "virtualIp": null
+		},
+		{
+		  "hostType": "Repository",
+		  "name": "wbq-image-thumb.scm.azurewebsites.net",
+		  "sslState": "Disabled",
+		  "thumbprint": null,
+		  "toUpdate": null,
+		  "virtualIp": null
+		}
+	  ],
+	  "hostNames": [
+		"wbq-image-thumb.azurewebsites.net"
+	  ],
+	  "hostNamesDisabled": false,
+	  "hostingEnvironmentProfile": null,
+	  "httpsOnly": false,
+	  "id": "/subscriptions/1e54fbcb-5257-4b12-9433-54b6cf44ee5e/resourceGroups/wbqResGrpOne/providers/Microsoft.Web/sites/wbq-image-thumb",
+	  "identity": null,
+	  "isDefaultContainer": null,
+	  "kind": "app",
+	  "lastModifiedTimeUtc": "2017-11-30T14:25:43.210000",
+	  "location": "North Europe",
+	  "maxNumberOfWorkers": null,
+	  "name": "wbq-image-thumb",
+	  "outboundIpAddresses": "52.169.188.236,52.164.240.254,52.169.190.121,52.169.191.228,52.178.151.108",
+	  "possibleOutboundIpAddresses": "52.169.188.236,52.164.240.254,52.169.190.121,52.169.191.228,52.178.151.108,52.169.191.93,52.169.190.24",
+	  "repositorySiteName": "wbq-image-thumb",
+	  "reserved": false,
+	  "resourceGroup": "wbqResGrpOne",
+	  "scmSiteAlsoStopped": false,
+	  "serverFarmId": "/subscriptions/1e54fbcb-5257-4b12-9433-54b6cf44ee5e/resourceGroups/wbqResGrpOne/providers/Microsoft.Web/serverfarms/wbqAppServicePlanOneFree",
+	  "siteConfig": null,
+	  "slotSwapStatus": null,
+	  "snapshotInfo": null,
+	  "state": "Running",
+	  "suspendedTill": null,
+	  "tags": null,
+	  "targetSwapSlot": null,
+	  "trafficManagerHostNames": null,
+	  "type": "Microsoft.Web/sites",
+	  "usageState": "Normal"
+	}
+
+
+
+
+-- deploy the web app - takes a while!
+az webapp deployment source config --name wbq-image-thumb \
+--resource-group wbqResGrpOne --branch master --manual-integration \
+--repo-url https://github.com/wbquinn/storage-blob-upload-from-webapp
+
+
+	 \ Running ..
+
+	 / Running ..
+	{
+	  "branch": "master",
+	  "deploymentRollbackEnabled": false,
+	  "id": "/subscriptions/1e54fbcb-5257-4b12-9433-54b6cf44ee5e/resourceGroups/wbqResGrpOne/providers/Microsoft.Web/sites/wbq-image-thumb/sourcecontrol
+	s/web",
+	  "isManualIntegration": true,
+	  "isMercurial": false,
+	  "kind": null,
+	  "name": "wbq-image-thumb",
+	  "repoUrl": "https://github.com/wbquinn/storage-blob-upload-from-webapp",
+	  "resourceGroup": "wbqResGrpOne",
+	  "type": "Microsoft.Web/sites/sourcecontrols"
+	}
+
+
+-- configure web app for my storage
+az webapp config appsettings set --name wbq-image-thumb --resource-group wbqResGrpOne \
+--settings AzureStorageConfig__AccountName=wbqstorage1 \
+AzureStorageConfig__ImageContainer=images  \
+AzureStorageConfig__ThumbnailContainer=thumbs \
+AzureStorageConfig__AccountKey=**********************************************==
+  
+[
+  {
+    "name": "AzureStorageConfig__AccountName",
+    "slotSetting": false,
+    "value": "wbqstorage1"
+  },
+  {
+    "name": "AzureStorageConfig__ImageContainer",
+    "slotSetting": false,
+    "value": "images"
+  },
+  {
+    "name": "AzureStorageConfig__ThumbnailContainer",
+    "slotSetting": false,
+    "value": "thumbs"
+  },
+  {
+    "name": "AzureStorageConfig__AccountKey",
+    "slotSetting": false,
+    "value": "**********************************************"
+  }
+]
+
